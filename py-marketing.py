@@ -90,7 +90,6 @@ CHANNEL_TYPE = {
     "Other": "Other",
 }
 
-
 def load_to_staging(conn, excel_path):
     """Read Excel file and load all rows into staging.RAW_TABLE (truncate + reload)."""
     print(f"Loading {excel_path} → {STG_SCHEMA}.{RAW_TABLE}")

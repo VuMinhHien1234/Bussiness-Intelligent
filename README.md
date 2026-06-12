@@ -1,6 +1,6 @@
 # Hệ thống BI phân tích dữ liệu Marketing đa nguồn
 
-Dự án Business Intelligence hoàn chỉnh: hợp nhất **3 nguồn dữ liệu** (bán hàng Excel, quảng cáo Facebook CSV, thời tiết thực tế CSV) vào kho dữ liệu PostgreSQL theo mô hình **star schema / fact constellation**, vận hành bằng pipeline ETL tự động, trực quan hóa trên **Tableau / Power BI**. Nghiên cứu trường hợp: dữ liệu marketing mô phỏng của Tập đoàn Masan, giai đoạn 2021–2025.
+Dự án Business Intelligence hoàn chỉnh: hợp nhất **3 nguồn dữ liệu thuộc 3 kiểu trích xuất** (file Excel bán hàng, file CSV quảng cáo Facebook, **REST API thời tiết Open-Meteo**) vào kho dữ liệu PostgreSQL theo mô hình **star schema / fact constellation**, vận hành bằng pipeline ETL tự động có lập lịch, trực quan hóa trên **Tableau / Power BI**. Nghiên cứu trường hợp: dữ liệu marketing mô phỏng của Tập đoàn Masan, giai đoạn 2021–2025 (riêng thời tiết là số liệu thật).
 
 ## Kiến trúc
 
@@ -15,6 +15,13 @@ Open-Meteo API → weather_daily.csv          ┘        │            ├─ s
 - **Staging**: dữ liệu nguyên trạng dạng TEXT, nạp kiểu truncate-reload.
 - **DW**: 11 dimension dùng chung (date, region, branch, product, stage, channel, campaign, segment, department, machine, information) + 3 fact (`fact_marketing_sales`, `fact_ad_spend`, `fact_weather_daily`) + view `v_sales_weather` join sẵn cho dashboard.
 - **ETL** (`py-marketing.py`): parse ngày đa định dạng, map tên chiến dịch giữa 2 hệ thống, log số dòng bị loại theo lý do, nạp upsert (chạy lại bao nhiêu lần cũng an toàn).
+
+## Số liệu và phát hiện chính
+
+- Quy mô: 3.746 đơn hàng (3.732 dòng sạch sau ETL), 1.831 ngày-chiến dịch quảng cáo, 5.478 ngày-vùng thời tiết; 5 năm 2021–2025.
+- Doanh thu theo năm: 3,42 → 3,87 → 4,12 → 3,83 → 4,14 triệu (CAGR +4,9%/năm).
+- Phát hiện nổi bật: biên lợi nhuận gãy từ 23–25% xuống ~18% từ 2024 (thủ phạm chính: chi phí nguyên liệu tăng từ 42,3% lên 45,2% doanh thu); chiến dịch Tết hiệu quả quảng cáo thấp nhất (12 đồng doanh thu/1 đồng ads, so với 21–22 của Spring/Back-to-School); ngành Kem tại Miền Bắc bán mùa hè gấp ~2,2 lần mùa đông, tương quan thuận với nhiệt độ thực tế; phân khúc Nhà phân phối biên lãi chỉ 11% so với 29% của Kênh hiện đại.
+- Toàn bộ phân tích chi tiết nằm trong báo cáo Word (9 chương, trong đó Chương 8 là 7 báo cáo chuyên đề: chuyển đổi, digital marketing, bán hàng, chi phí, phân khúc, vận hành, dự báo theo thời tiết) và 5 dashboard được đề xuất kèm hướng dẫn dựng từng bước.
 
 ## Yêu cầu
 
@@ -48,7 +55,9 @@ EDITOR=nano crontab -e
 | User / Password | `bi_user` / `bi_pass` |
 | Schema phân tích | `dw` |
 
-Tableau trên macOS cần driver PostgreSQL JDBC (file `.jar`) đặt tại `~/Library/Tableau/Drivers`. Chi tiết cách dựng từng biểu đồ: xem `HUONG_DAN_DASHBOARD.md`.
+Tableau trên macOS cần driver PostgreSQL JDBC (file `.jar`) đặt tại `~/Library/Tableau/Drivers`.
+
+Hướng dẫn dựng biểu đồ/dashboard (3 tài liệu): `HUONG_DAN_TABLEAU.md` (Tableau, từng cú click), `HUONG_DAN_POWERBI.md` (Power BI, từng cú click), `HUONG_DAN_DASHBOARD.md` (tổng hợp ngắn cả hai).
 
 ## Cấu trúc thư mục
 
@@ -67,8 +76,13 @@ Tableau trên macOS cần driver PostgreSQL JDBC (file `.jar`) đặt tại `~/L
 | `add_2021_2022_data.py` | (đã dùng, 1 lần) sinh dữ liệu lịch sử 2021–2022 |
 | `adjust_sales_by_weather.py` | (đã dùng, 1 lần) hiệu chỉnh mùa vụ theo nhiệt độ thật — có khóa chống chạy lại |
 | `pbi-marketing.pbix` | Dashboard Power BI (đổi cổng sang 5434 để dùng với kho mới) |
-| `Bao_Cao_Du_An_BI_Marketing.docx` | Báo cáo dự án đầy đủ (27 trang, 9 chương) |
-| `HUONG_DAN_DASHBOARD.md` | Hướng dẫn kéo thả Tableau + dùng Power BI |
+| `Bao_Cao_Du_An_BI_Marketing.docx` | Báo cáo dự án đầy đủ (27 trang, 9 chương, 8 hình, 10 bảng) |
+| `Bao_Cao_Du_An_BI_Marketing_old.docx` | Bản báo cáo cũ (hệ thống 1 nguồn) — giữ để đối chiếu |
+| `HUONG_DAN_TABLEAU.md` | Dựng 8 biểu đồ trên Tableau — chỉ dẫn từng cú click |
+| `HUONG_DAN_POWERBI.md` | Dựng 8 biểu đồ trên Power BI — chỉ dẫn từng cú click, kèm DAX |
+| `HUONG_DAN_DASHBOARD.md` | Bản tổng hợp ngắn: Tableau + Power BI + checklist lỗi |
+| `README.md` | Tài liệu này |
+| `etl.log` | Nhật ký các lần pipeline chạy theo lịch cron (tự sinh) |
 | `masan_case_backup_*.xlsx` | Các bản backup dữ liệu trước mỗi lần biến đổi |
 
 ## Cập nhật dữ liệu
