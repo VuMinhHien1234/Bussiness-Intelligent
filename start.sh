@@ -69,7 +69,7 @@ else
 
   # Load data vào DWH
   echo "      → Nạp dữ liệu vào Data Warehouse..."
-  python3 etl/py-marketing.py
+  python3 etl/main.py
 
   echo ""
   echo "      ✓ ETL hoàn thành!"

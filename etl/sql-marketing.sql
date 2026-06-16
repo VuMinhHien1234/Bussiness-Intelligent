@@ -1,7 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS dw;
 
--- Staging luôn được tạo lại (Python sẽ TRUNCATE trước khi load)
 DROP TABLE IF EXISTS staging.vnretail_data_xlsx;
 DROP TABLE IF EXISTS staging.fb_ads_csv;
 DROP TABLE IF EXISTS staging.weather_csv;
