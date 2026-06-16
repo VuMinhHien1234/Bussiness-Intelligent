@@ -1,23 +1,8 @@
 CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS dw;
 
-DROP VIEW IF EXISTS dw.v_sales_weather;
-DROP TABLE IF EXISTS dw.fact_weather_daily;
-DROP TABLE IF EXISTS dw.fact_ad_spend;
-DROP TABLE IF EXISTS dw.fact_marketing_sales;
-DROP TABLE IF EXISTS dw.dim_branch;
-DROP TABLE IF EXISTS dw.dim_region;
-DROP TABLE IF EXISTS dw.dim_product;
-DROP TABLE IF EXISTS dw.dim_information;
-DROP TABLE IF EXISTS dw.dim_machine;
-DROP TABLE IF EXISTS dw.dim_department;
-DROP TABLE IF EXISTS dw.dim_campaign;
-DROP TABLE IF EXISTS dw.dim_customer_segment;
-DROP TABLE IF EXISTS dw.dim_channel;
-DROP TABLE IF EXISTS dw.dim_stage;
-DROP TABLE IF EXISTS dw.dim_date;
-DROP TABLE IF EXISTS staging.vinamilk_case_xlsx; -- tên cũ, giữ để dọn bản cài trước
-DROP TABLE IF EXISTS staging.masan_case_xlsx;
+-- Staging luôn được tạo lại (Python sẽ TRUNCATE trước khi load)
+DROP TABLE IF EXISTS staging.vnretail_data_xlsx;
 DROP TABLE IF EXISTS staging.fb_ads_csv;
 DROP TABLE IF EXISTS staging.weather_csv;
 
@@ -25,7 +10,7 @@ DROP TABLE IF EXISTS staging.weather_csv;
 -- STAGING (raw Excel load)
 -- ============================================================
 
-CREATE TABLE staging.masan_case_xlsx (
+CREATE TABLE staging.vnretail_data_xlsx (
     "OrderID"            TEXT,
     "Date"               TEXT,
     "Year"               TEXT,
@@ -88,21 +73,21 @@ CREATE TABLE staging.weather_csv (
 -- DIMENSIONS
 -- ============================================================
 
-CREATE TABLE dw.dim_region (
+CREATE TABLE IF NOT EXISTS dw.dim_region (
     region_name    VARCHAR(50) PRIMARY KEY
 );
 
-CREATE TABLE dw.dim_branch (
+CREATE TABLE IF NOT EXISTS dw.dim_branch (
     branch_name    VARCHAR(100) PRIMARY KEY,
     region_name    VARCHAR(50) REFERENCES dw.dim_region(region_name)
 );
 
-CREATE TABLE dw.dim_product (
+CREATE TABLE IF NOT EXISTS dw.dim_product (
     product_name   VARCHAR(150) PRIMARY KEY,
     category_name  VARCHAR(100)
 );
 
-CREATE TABLE dw.dim_date (
+CREATE TABLE IF NOT EXISTS dw.dim_date (
     full_date      DATE PRIMARY KEY,
     year           INT NOT NULL,
     month          INT NOT NULL,
@@ -112,7 +97,7 @@ CREATE TABLE dw.dim_date (
 );
 
 
-CREATE TABLE dw.dim_stage (
+CREATE TABLE IF NOT EXISTS dw.dim_stage (
     stage_name     VARCHAR(50) PRIMARY KEY,
     stage_order    INT NOT NULL,
     stage_group    VARCHAR(50)
@@ -129,29 +114,29 @@ ON CONFLICT (stage_name) DO UPDATE SET
     stage_order = EXCLUDED.stage_order,
     stage_group = EXCLUDED.stage_group;
 
-CREATE TABLE dw.dim_channel (
+CREATE TABLE IF NOT EXISTS dw.dim_channel (
     channel_name   VARCHAR(100) PRIMARY KEY,
     channel_type   VARCHAR(50)
 );
 
-CREATE TABLE dw.dim_customer_segment (
+CREATE TABLE IF NOT EXISTS dw.dim_customer_segment (
     segment_name   VARCHAR(100) PRIMARY KEY
 );
 
-CREATE TABLE dw.dim_campaign (
+CREATE TABLE IF NOT EXISTS dw.dim_campaign (
     campaign_name  VARCHAR(150) PRIMARY KEY,
     campaign_type  VARCHAR(100)
 );
 
-CREATE TABLE dw.dim_department (
+CREATE TABLE IF NOT EXISTS dw.dim_department (
     department_name VARCHAR(100) PRIMARY KEY
 );
 
-CREATE TABLE dw.dim_machine (
+CREATE TABLE IF NOT EXISTS dw.dim_machine (
     machine_name   VARCHAR(50) PRIMARY KEY
 );
 
-CREATE TABLE dw.dim_information (
+CREATE TABLE IF NOT EXISTS dw.dim_information (
     information_name VARCHAR(150) PRIMARY KEY
 );
 
@@ -159,7 +144,7 @@ CREATE TABLE dw.dim_information (
 -- FACT TABLE
 -- ============================================================
 
-CREATE TABLE dw.fact_marketing_sales (
+CREATE TABLE IF NOT EXISTS dw.fact_marketing_sales (
     order_id               BIGINT PRIMARY KEY,
 
     full_date              DATE REFERENCES dw.dim_date(full_date),
@@ -233,7 +218,7 @@ CREATE TABLE dw.fact_marketing_sales (
 -- (conformed dimensions - mô hình fact constellation).
 -- ============================================================
 
-CREATE TABLE dw.fact_ad_spend (
+CREATE TABLE IF NOT EXISTS dw.fact_ad_spend (
     full_date      DATE NOT NULL REFERENCES dw.dim_date(full_date),
     campaign_name  VARCHAR(150) NOT NULL REFERENCES dw.dim_campaign(campaign_name),
     channel_name   VARCHAR(100) REFERENCES dw.dim_channel(channel_name),
@@ -264,7 +249,7 @@ CREATE TABLE dw.fact_ad_spend (
 -- Dùng chung dim_date, dim_region với fact bán hàng.
 -- ============================================================
 
-CREATE TABLE dw.fact_weather_daily (
+CREATE TABLE IF NOT EXISTS dw.fact_weather_daily (
     full_date    DATE NOT NULL REFERENCES dw.dim_date(full_date),
     region_name  VARCHAR(50) NOT NULL REFERENCES dw.dim_region(region_name),
     temp_mean    NUMERIC(6,2),
@@ -277,7 +262,7 @@ CREATE TABLE dw.fact_weather_daily (
 -- VIEW: bán hàng + thời tiết (join sẵn cho Tableau)
 -- ============================================================
 
-CREATE VIEW dw.v_sales_weather AS
+CREATE OR REPLACE VIEW dw.v_sales_weather AS
 SELECT
     f.*,
     b.region_name,
@@ -296,9 +281,9 @@ LEFT JOIN dw.fact_weather_daily w
 -- INDEXES cho truy vấn dashboard
 -- ============================================================
 
-CREATE INDEX idx_fact_sales_date     ON dw.fact_marketing_sales (full_date);
-CREATE INDEX idx_fact_sales_channel  ON dw.fact_marketing_sales (channel_name);
-CREATE INDEX idx_fact_sales_campaign ON dw.fact_marketing_sales (campaign_name);
-CREATE INDEX idx_fact_sales_branch   ON dw.fact_marketing_sales (branch_name);
-CREATE INDEX idx_fact_sales_product  ON dw.fact_marketing_sales (product_name);
-CREATE INDEX idx_fact_ads_campaign   ON dw.fact_ad_spend (campaign_name);
+CREATE INDEX IF NOT EXISTS idx_fact_sales_date     ON dw.fact_marketing_sales (full_date);
+CREATE INDEX IF NOT EXISTS idx_fact_sales_channel  ON dw.fact_marketing_sales (channel_name);
+CREATE INDEX IF NOT EXISTS idx_fact_sales_campaign ON dw.fact_marketing_sales (campaign_name);
+CREATE INDEX IF NOT EXISTS idx_fact_sales_branch   ON dw.fact_marketing_sales (branch_name);
+CREATE INDEX IF NOT EXISTS idx_fact_sales_product  ON dw.fact_marketing_sales (product_name);
+CREATE INDEX IF NOT EXISTS idx_fact_ads_campaign   ON dw.fact_ad_spend (campaign_name);

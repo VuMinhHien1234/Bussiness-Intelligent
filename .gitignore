@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment (chứa mật khẩu DB - không commit)
+# .env   ← bỏ comment dòng này nếu muốn giữ bí mật DB credentials
+
+# macOS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Backup files
+data/*_backup*.xlsx
+
+# Tableau cache
+*.tds.bak

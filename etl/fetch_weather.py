@@ -1,6 +1,4 @@
-# fetch_weather.py — Nguồn 3: tải thời tiết thật từ Open-Meteo API (miễn phí, không cần key)
-# Cách chạy:  python3 fetch_weather.py
-# Kết quả:    weather_daily.csv (ngày x vùng: nhiệt độ TB, nhiệt độ max, lượng mưa)
+import os
 
 import csv
 import json
@@ -10,7 +8,7 @@ import urllib.request
 START = "2021-01-01"
 END = "2025-12-31"
 
-# Mỗi miền lấy theo thành phố đại diện (khớp cột Region trong masan_case.xlsx).
+# Mỗi miền lấy theo thành phố đại diện (khớp cột Region trong vnretail_data.xlsx).
 REGIONS = {
     "Miền Bắc": (21.0285, 105.8542),   # Hà Nội
     "Miền Trung": (16.0544, 108.2022), # Đà Nẵng
@@ -54,7 +52,8 @@ def main():
     for region, (lat, lon) in REGIONS.items():
         rows.extend(fetch(region, lat, lon))
 
-    out = "weather_daily.csv"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    out = os.path.join(script_dir, "..", "data", "weather_daily.csv")
     with open(out, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f, fieldnames=["date", "region", "temp_mean", "temp_max", "rain_mm"]

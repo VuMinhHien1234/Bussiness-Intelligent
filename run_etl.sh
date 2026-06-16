@@ -23,7 +23,7 @@ echo "      PostgreSQL is ready."
 # 2. Run SQL setup (create schemas + tables)
 echo ""
 echo "[2/4] Creating schemas and tables..."
-docker exec -i bi_postgres psql -U bi_user -d bi_db < sql-marketing.sql
+docker exec -i bi_postgres psql -U bi_user -d bi_db < etl/sql-marketing.sql
 echo "      Done."
 
 # 3. Install Python dependencies
@@ -39,8 +39,8 @@ echo "[4/4] Running ETL (Excel + Ads CSV + Weather API -> staging -> DW)..."
 # Nguồn 3: gọi Open-Meteo API cập nhật thời tiết mỗi lần chạy.
 # Nếu offline/API lỗi thì dùng lại weather_daily.csv sẵn có (fallback).
 echo "      Cập nhật thời tiết từ Open-Meteo API..."
-python3 fetch_weather.py || echo "      (!) Không gọi được API — dùng weather_daily.csv sẵn có (nếu tồn tại)."
-python3 py-marketing.py
+python3 etl/fetch_weather.py || echo "      (!) Không gọi được API — dùng weather_daily.csv sẵn có (nếu tồn tại)."
+python3 etl/py-marketing.py
 
 echo ""
 echo "======================================"

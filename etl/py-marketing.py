@@ -13,10 +13,10 @@ from dotenv import load_dotenv
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # Load database connection settings and table names from .env.
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(dotenv_path)
 
-EXCEL_PATH = os.getenv("EXCEL_PATH", "masan_case.xlsx")
+EXCEL_PATH = os.getenv("EXCEL_PATH", "vnretail_data.xlsx")
 # Resolve relative path against the script's directory.
 if not os.path.isabs(EXCEL_PATH):
     EXCEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), EXCEL_PATH)
@@ -31,7 +31,7 @@ DB_CONFIG = {
 
 STG_SCHEMA = os.getenv("DB_SCHEMA_STAGING", "staging")
 DW_SCHEMA = os.getenv("DB_SCHEMA_DWH", "dw")
-RAW_TABLE = os.getenv("RAW_TABLE", "masan_case_xlsx")
+RAW_TABLE = os.getenv("RAW_TABLE", "vnretail_data_xlsx")
 
 DIM_DATE_TABLE = os.getenv("MARKETING_DIM_DATE_TABLE", "dim_date")
 DIM_STAGE_TABLE = os.getenv("MARKETING_DIM_STAGE_TABLE", "dim_stage")
