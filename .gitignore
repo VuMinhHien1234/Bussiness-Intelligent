@@ -21,3 +21,4 @@ data/*_backup*.xlsx
 
 # Tableau cache
 *.tds.bak
+~$*
