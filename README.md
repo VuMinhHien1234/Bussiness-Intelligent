@@ -1,107 +1,185 @@
-# Hệ thống BI phân tích dữ liệu Marketing đa nguồn
+# VNRetail — Hệ thống Business Intelligence
 
-Dự án Business Intelligence hoàn chỉnh: hợp nhất **3 nguồn dữ liệu thuộc 3 kiểu trích xuất** (file Excel bán hàng, file CSV quảng cáo Facebook, **REST API thời tiết Open-Meteo**) vào kho dữ liệu PostgreSQL theo mô hình **star schema / fact constellation**, vận hành bằng pipeline ETL tự động có lập lịch, trực quan hóa trên **Tableau / Power BI**. Nghiên cứu trường hợp: dữ liệu marketing mô phỏng của Tập đoàn Masan, giai đoạn 2021–2025 (riêng thời tiết là số liệu thật).
+Dự án BI hoàn chỉnh: tích hợp **3 nguồn dữ liệu** (file Excel bán hàng, CSV quảng cáo Facebook, REST API thời tiết Open-Meteo) vào kho dữ liệu PostgreSQL theo mô hình **star schema / fact constellation**, vận hành qua pipeline ETL tự động, trực quan hóa trên **Tableau Desktop** với 5 dashboard tương tác.
 
-## Kiến trúc
+Nghiên cứu trường hợp: dữ liệu mô phỏng tập đoàn VNRetail (FMCG), giai đoạn 2021–2025.
+
+---
+
+## Kiến trúc tổng thể
 
 ```
-vnretail_data.xlsx (3.746 đơn hàng)            ┐
-fb_ads_spend.csv (1.831 ngày x CD)          ├─→ run_etl.sh ─→ PostgreSQL (Docker, cổng 5434)
-Open-Meteo API → weather_daily.csv          ┘        │            ├─ schema staging: 3 bảng thô
-(gọi API mỗi lần chạy, offline dùng cache)           │            └─ schema dw: 11 dim + 3 fact + view
-                                                     └─→ Tableau / Power BI (kéo thả dashboard)
+data/vnretail_data.xlsx       ┐
+data/fb_ads_spend.csv         ├─→ app.py (Streamlit UI)
+etl/fetch_weather.py (API)    ┘        │
+                                       ▼
+                              run_etl.sh
+                                       │
+                              ┌────────▼────────┐
+                              │  PostgreSQL 15   │
+                              │  (Docker :5434)  │
+                              │                  │
+                              │  schema staging  │  ← dữ liệu thô TEXT
+                              │  schema dw       │  ← star schema sạch
+                              └────────┬─────────┘
+                                       │
+                              Tableau Desktop
+                              (5 dashboards)
 ```
 
-- **Staging**: dữ liệu nguyên trạng dạng TEXT, nạp kiểu truncate-reload.
-- **DW**: 11 dimension dùng chung (date, region, branch, product, stage, channel, campaign, segment, department, machine, information) + 3 fact (`fact_marketing_sales`, `fact_ad_spend`, `fact_weather_daily`) + view `v_sales_weather` join sẵn cho dashboard.
-- **ETL** (`py-marketing.py`): parse ngày đa định dạng, map tên chiến dịch giữa 2 hệ thống, log số dòng bị loại theo lý do, nạp upsert (chạy lại bao nhiêu lần cũng an toàn).
+### Schema DW — Star Schema
 
-## Số liệu và phát hiện chính
+| Bảng | Loại | Số dòng | Mô tả |
+|---|---|---|---|
+| fact_marketing_sales | Fact | 14,981 | Doanh thu, chi phí, lợi nhuận, funnel |
+| fact_ad_spend | Fact | 2,300 | Chi phí quảng cáo Facebook theo ngày × chiến dịch |
+| fact_weather_daily | Fact | 5,478 | Thời tiết thực tế theo ngày × vùng (2021–2025) |
+| dim_date | Dimension | 1,826 | Lịch đầy đủ: năm, quý, tháng |
+| dim_product | Dimension | 40 | Sản phẩm với phân loại ngành hàng |
+| dim_branch | Dimension | 9 | Chi nhánh với FK vùng địa lý |
+| dim_region | Dimension | 3 | Miền Bắc / Miền Trung / Miền Nam |
+| dim_channel | Dimension | 6 | Kênh bán hàng |
+| dim_customer_segment | Dimension | 4 | Phân khúc khách hàng |
+| dim_campaign | Dimension | 9 | Chiến dịch marketing |
+| dim_department | Dimension | 6 | Phòng ban |
+| dim_stage | Dimension | 5 | Funnel chuyển đổi |
+| dim_machine | Dimension | 4 | Máy móc sản xuất |
+| dim_information | Dimension | 4 | Loại thông tin khách hàng |
 
-- Quy mô: 3.746 đơn hàng (3.732 dòng sạch sau ETL), 1.831 ngày-chiến dịch quảng cáo, 5.478 ngày-vùng thời tiết; 5 năm 2021–2025.
-- Doanh thu theo năm: 3,42 → 3,87 → 4,12 → 3,83 → 4,14 triệu (CAGR +4,9%/năm).
-- Phát hiện nổi bật: biên lợi nhuận gãy từ 23–25% xuống ~18% từ 2024 (thủ phạm chính: chi phí nguyên liệu tăng từ 42,3% lên 45,2% doanh thu); chiến dịch Tết hiệu quả quảng cáo thấp nhất (12 đồng doanh thu/1 đồng ads, so với 21–22 của Spring/Back-to-School); ngành Nước giải khát tại Miền Bắc bán mùa hè gấp ~2,2 lần mùa đông, tương quan thuận với nhiệt độ thực tế; phân khúc Nhà phân phối biên lãi chỉ 11% so với 29% của Kênh hiện đại.
-- Toàn bộ phân tích chi tiết nằm trong báo cáo Word (9 chương, trong đó Chương 8 là 7 báo cáo chuyên đề: chuyển đổi, digital marketing, bán hàng, chi phí, phân khúc, vận hành, dự báo theo thời tiết) và 5 dashboard được đề xuất kèm hướng dẫn dựng từng bước.
+View `dw.v_sales_weather` join sẵn fact_marketing_sales + dim_branch + dim_product + fact_weather_daily — nguồn dữ liệu chính cho Tableau.
+
+---
+
+## Số liệu tổng quan
+
+| Chỉ số | Giá trị |
+|---|---|
+| Tổng đơn hàng | 14,981 |
+| Sản phẩm | 40 (7 ngành hàng) |
+| Chi nhánh | 9 (3 vùng địa lý) |
+| Kênh bán hàng | 6 |
+| Giai đoạn | 2021–2025 |
+| Tổng doanh thu | 99.1 tỷ VND |
+| Tổng lợi nhuận | 22.9 tỷ VND |
+| Biên lợi nhuận | 23.2% |
+
+---
 
 ## Yêu cầu
 
 - Docker Desktop (đang chạy)
-- Python 3 (macOS có sẵn; thư viện tự cài khi chạy script)
-- Tableau Desktop hoặc Power BI Desktop (để xem dashboard)
+- Python 3.10+
+- Tableau Desktop 2024
 
-## Chạy hệ thống
+---
+
+## Khởi động
+
+### Cách 1 — ETL tự động (khuyến nghị)
 
 ```bash
 cd ~/Desktop/BI
 ./run_etl.sh
 ```
 
-Script tự làm 4 việc: khởi động PostgreSQL trong Docker → dựng schema từ `sql-marketing.sql` → cài thư viện Python → chạy ETL nạp cả 3 nguồn. Khi thấy `ETL hoàn thành!` là dữ liệu sẵn sàng.
+Script tự làm 4 việc:
+1. Khởi động PostgreSQL trong Docker
+2. Tạo schema + bảng từ `etl/sql-marketing.sql`
+3. Cài thư viện Python
+4. Chạy ETL nạp cả 3 nguồn vào DW
 
-Lập lịch chạy tự động 9h sáng hằng ngày (tùy chọn):
+Khi thấy `ETL hoàn thành!` là dữ liệu đã sẵn sàng cho Tableau.
+
+### Cách 2 — Streamlit UI (upload + validate + ETL)
 
 ```bash
-EDITOR=nano crontab -e
-# thêm dòng:
-0 9 * * * cd ~/Desktop/BI && ./run_etl.sh >> etl.log 2>&1
+pip install streamlit pandas openpyxl --break-system-packages
+streamlit run app.py
 ```
 
-## Kết nối công cụ BI
+Mở trình duyệt tại `http://localhost:8501`, upload file Excel, xem kết quả validate, bấm nút chạy ETL.
+
+---
+
+## Kết nối Tableau
 
 | Thông số | Giá trị |
 |---|---|
-| Host / Port | `localhost` / `5434` |
+| Host | `localhost` |
+| Port | `5434` |
 | Database | `bi_db` |
-| User / Password | `bi_user` / `bi_pass` |
-| Schema phân tích | `dw` |
+| Username | `bi_user` |
+| Password | `bi_pass` |
+| Schema | `dw` |
 
-Tableau trên macOS cần driver PostgreSQL JDBC (file `.jar`) đặt tại `~/Library/Tableau/Drivers`.
+> macOS cần driver PostgreSQL JDBC (file `.jar` ~1 MB) đặt tại `~/Library/Tableau/Drivers`. Tải tại jdbc.postgresql.org, thoát hẳn Tableau (Cmd+Q) rồi mở lại.
 
-Hướng dẫn dựng biểu đồ/dashboard (3 tài liệu): `HUONG_DAN_TABLEAU.md` (Tableau, từng cú click), `HUONG_DAN_POWERBI.md` (Power BI, từng cú click), `HUONG_DAN_DASHBOARD.md` (tổng hợp ngắn cả hai).
+---
 
 ## Cấu trúc thư mục
 
-| File | Vai trò |
-|---|---|
-| `vnretail_data.xlsx` | Nguồn 1 — bán hàng (3.746 dòng, 2021–2025, 37 cột) |
-| `fb_ads_spend.csv` | Nguồn 2 — chi quảng cáo Facebook theo ngày × chiến dịch |
-| `weather_daily.csv` | Nguồn 3 — nhiệt độ/mưa thực tế 3 vùng (Hà Nội, Đà Nẵng, TP.HCM) |
-| `docker-compose.yml` | PostgreSQL 15, cổng 5434, volume `pgdata` |
-| `sql-marketing.sql` | Dựng staging + DW (11 dim, 3 fact, view, index) |
-| `py-marketing.py` | ETL 3 nguồn: staging → làm sạch → DW |
-| `run_etl.sh` | Chạy toàn bộ pipeline bằng 1 lệnh |
-| `.env` | Cấu hình kết nối và tên bảng (đổi ở đây, không sửa code) |
-| `fetch_weather.py` | Gọi Open-Meteo API → `weather_daily.csv` (`run_etl.sh` tự gọi mỗi lần chạy; offline thì dùng file sẵn có) |
-| `add_2025_data.py` | (đã dùng, 1 lần) sinh dữ liệu 2025 |
-| `add_2021_2022_data.py` | (đã dùng, 1 lần) sinh dữ liệu lịch sử 2021–2022 |
-| `adjust_sales_by_weather.py` | (đã dùng, 1 lần) hiệu chỉnh mùa vụ theo nhiệt độ thật — có khóa chống chạy lại |
-| `pbi-marketing.pbix` | Dashboard Power BI (đổi cổng sang 5434 để dùng với kho mới) |
-| `Bao_Cao_Du_An_BI_Marketing.docx` | Báo cáo dự án đầy đủ (27 trang, 9 chương, 8 hình, 10 bảng) |
-| `Bao_Cao_Du_An_BI_Marketing_old.docx` | Bản báo cáo cũ (hệ thống 1 nguồn) — giữ để đối chiếu |
-| `HUONG_DAN_TABLEAU.md` | Dựng 8 biểu đồ trên Tableau — chỉ dẫn từng cú click |
-| `HUONG_DAN_POWERBI.md` | Dựng 8 biểu đồ trên Power BI — chỉ dẫn từng cú click, kèm DAX |
-| `HUONG_DAN_DASHBOARD.md` | Bản tổng hợp ngắn: Tableau + Power BI + checklist lỗi |
-| `README.md` | Tài liệu này |
-| `etl.log` | Nhật ký các lần pipeline chạy theo lịch cron (tự sinh) |
-| `vnretail_data_backup_*.xlsx` | Các bản backup dữ liệu trước mỗi lần biến đổi |
+```
+BI/
+├── app.py                          # Streamlit UI: upload → validate → ETL
+├── run_etl.sh                      # Chạy toàn bộ pipeline bằng 1 lệnh
+├── docker-compose.yml              # PostgreSQL 15, port 5434
+├── .env                            # Cấu hình kết nối DB và tên bảng
+│
+├── etl/
+│   ├── sql-marketing.sql           # DDL: tạo staging + dw (idempotent)
+│   ├── py-marketing.py             # ETL Python: 3 nguồn → staging → dw
+│   └── fetch_weather.py            # Gọi Open-Meteo API → weather_daily.csv
+│
+├── data/
+│   ├── vnretail_data.xlsx          # Nguồn 1: bán hàng (14,981 đơn, 37 cột)
+│   ├── fb_ads_spend.csv            # Nguồn 2: chi phí quảng cáo Facebook
+│   ├── weather_daily.csv           # Nguồn 3: thời tiết 3 vùng × 5 năm
+│   └── test_data_errors.xlsx       # File test validation (1,500 dòng, 40% lỗi)
+│
+└── docs/
+    └── VNRetail_BI_Report_Plain_EN.docx   # Báo cáo phân tích đầy đủ (tiếng Anh)
+```
+
+---
 
 ## Cập nhật dữ liệu
 
-- **Thêm/sửa đơn hàng**: sửa trực tiếp `vnretail_data.xlsx` (đúng 37 cột, ngày dạng `YYYY-MM-DD`) → chạy `./run_etl.sh` → F5 trong Tableau.
-- **Thêm chi quảng cáo**: thêm dòng vào `fb_ads_spend.csv` (ngày `dd/mm/yyyy`, campaign dạng slug như `tet_promotion`).
-- **Thời tiết**: tự cập nhật qua API mỗi lần chạy `./run_etl.sh` — không cần làm gì thêm.
+- **Thêm/sửa đơn hàng**: sửa `data/vnretail_data.xlsx` (giữ đúng 37 cột, ngày dạng `YYYY-MM-DD`) → chạy `./run_etl.sh` → Refresh trong Tableau (F5).
+- **Thêm chi quảng cáo**: thêm dòng vào `data/fb_ads_spend.csv` (ngày `dd/mm/yyyy`, campaign slug như `tet_promotion`).
+- **Thời tiết**: tự cập nhật qua API mỗi lần chạy `./run_etl.sh`.
 
-## Sự cố thường gặp
+---
 
-- **`port is already allocated` / `address already in use`**: cổng bị chiếm — đổi cổng trong `docker-compose.yml` (vế trái của `5434:5432`) và `DB_PORT` trong `.env` cho khớp.
-- **`pip: command not found`**: script đã dùng `python3 -m pip`; nếu vẫn lỗi, cài Python từ python.org.
-- **Tableau báo thiếu driver**: tải PostgreSQL JDBC `.jar` từ jdbc.postgresql.org, bỏ vào `~/Library/Tableau/Drivers`, thoát hẳn Tableau (Cmd+Q) mở lại. File phải nặng ~1 MB — nếu chỉ vài KB là tải hỏng.
-- **Không thấy dữ liệu mới trên dashboard**: kiểm tra ETL đã chạy lại chưa (`docker exec bi_postgres psql -U bi_user -d bi_db -c "SELECT COUNT(*) FROM dw.fact_marketing_sales;"`), rồi Refresh (F5) trong Tableau.
+## Xử lý sự cố
+
+**`port is already allocated`**
+```bash
+# Đổi port trong docker-compose.yml (vế trái 5434:5432) và DB_PORT trong .env
+```
+
+**Tableau báo thiếu driver**
+- Tải PostgreSQL JDBC `.jar` từ jdbc.postgresql.org
+- Đặt vào `~/Library/Tableau/Drivers`
+- Thoát hẳn Tableau (Cmd+Q), mở lại
+
+**Không thấy dữ liệu mới trên dashboard**
+```bash
+# Kiểm tra ETL đã chạy chưa
+docker exec bi_postgres psql -U bi_user -d bi_db \
+  -c "SELECT COUNT(*) FROM dw.fact_marketing_sales;"
+# Nếu OK → Refresh trong Tableau (F5)
+```
+
+---
 
 ## Kiểm tra nhanh kho dữ liệu
 
 ```bash
 docker exec bi_postgres psql -U bi_user -d bi_db -c \
-  "SELECT EXTRACT(YEAR FROM full_date) AS nam, COUNT(*), ROUND(SUM(revenue)) AS doanh_thu
-   FROM dw.fact_marketing_sales GROUP BY 1 ORDER BY 1;"
+  "SELECT EXTRACT(YEAR FROM full_date) AS year,
+          COUNT(*) AS orders,
+          ROUND(SUM(revenue)/1e6, 1) AS revenue_b,
+          ROUND(SUM(profit)/SUM(revenue)*100, 1) AS margin_pct
+   FROM dw.fact_marketing_sales
+   GROUP BY 1 ORDER BY 1;"
 ```
