@@ -29,22 +29,22 @@ etl/fetch_weather.py (API)    ┘        │
 
 ### Schema DW — Star Schema
 
-| Bảng | Loại | Số dòng | Mô tả |
-|---|---|---|---|
-| fact_marketing_sales | Fact | 14,981 | Doanh thu, chi phí, lợi nhuận, funnel |
-| fact_ad_spend | Fact | 2,300 | Chi phí quảng cáo Facebook theo ngày × chiến dịch |
-| fact_weather_daily | Fact | 5,478 | Thời tiết thực tế theo ngày × vùng (2021–2025) |
-| dim_date | Dimension | 1,826 | Lịch đầy đủ: năm, quý, tháng |
-| dim_product | Dimension | 40 | Sản phẩm với phân loại ngành hàng |
-| dim_branch | Dimension | 9 | Chi nhánh với FK vùng địa lý |
-| dim_region | Dimension | 3 | Miền Bắc / Miền Trung / Miền Nam |
-| dim_channel | Dimension | 6 | Kênh bán hàng |
-| dim_customer_segment | Dimension | 4 | Phân khúc khách hàng |
-| dim_campaign | Dimension | 9 | Chiến dịch marketing |
-| dim_department | Dimension | 6 | Phòng ban |
-| dim_stage | Dimension | 5 | Funnel chuyển đổi |
-| dim_machine | Dimension | 4 | Máy móc sản xuất |
-| dim_information | Dimension | 4 | Loại thông tin khách hàng |
+| Bảng                 | Loại      | Số dòng | Mô tả                                             |
+| -------------------- | --------- | ------- | ------------------------------------------------- |
+| fact_marketing_sales | Fact      | 14,981  | Doanh thu, chi phí, lợi nhuận, funnel             |
+| fact_ad_spend        | Fact      | 2,300   | Chi phí quảng cáo Facebook theo ngày × chiến dịch |
+| fact_weather_daily   | Fact      | 5,478   | Thời tiết thực tế theo ngày × vùng (2021–2025)    |
+| dim_date             | Dimension | 1,826   | Lịch đầy đủ: năm, quý, tháng                      |
+| dim_product          | Dimension | 40      | Sản phẩm với phân loại ngành hàng                 |
+| dim_branch           | Dimension | 9       | Chi nhánh với FK vùng địa lý                      |
+| dim_region           | Dimension | 3       | Miền Bắc / Miền Trung / Miền Nam                  |
+| dim_channel          | Dimension | 6       | Kênh bán hàng                                     |
+| dim_customer_segment | Dimension | 4       | Phân khúc khách hàng                              |
+| dim_campaign         | Dimension | 9       | Chiến dịch marketing                              |
+| dim_department       | Dimension | 6       | Phòng ban                                         |
+| dim_stage            | Dimension | 5       | Funnel chuyển đổi                                 |
+| dim_machine          | Dimension | 4       | Máy móc sản xuất                                  |
+| dim_information      | Dimension | 4       | Loại thông tin khách hàng                         |
 
 View `dw.v_sales_weather` join sẵn fact_marketing_sales + dim_branch + dim_product + fact_weather_daily — nguồn dữ liệu chính cho Tableau.
 
@@ -52,16 +52,16 @@ View `dw.v_sales_weather` join sẵn fact_marketing_sales + dim_branch + dim_pro
 
 ## Số liệu tổng quan
 
-| Chỉ số | Giá trị |
-|---|---|
-| Tổng đơn hàng | 14,981 |
-| Sản phẩm | 40 (7 ngành hàng) |
-| Chi nhánh | 9 (3 vùng địa lý) |
-| Kênh bán hàng | 6 |
-| Giai đoạn | 2021–2025 |
-| Tổng doanh thu | 99.1 tỷ VND |
-| Tổng lợi nhuận | 22.9 tỷ VND |
-| Biên lợi nhuận | 23.2% |
+| Chỉ số         | Giá trị           |
+| -------------- | ----------------- |
+| Tổng đơn hàng  | 14,981            |
+| Sản phẩm       | 40 (7 ngành hàng) |
+| Chi nhánh      | 9 (3 vùng địa lý) |
+| Kênh bán hàng  | 6                 |
+| Giai đoạn      | 2021–2025         |
+| Tổng doanh thu | 99.1 tỷ VND       |
+| Tổng lợi nhuận | 22.9 tỷ VND       |
+| Biên lợi nhuận | 23.2%             |
 
 ---
 
@@ -81,10 +81,12 @@ Tableau không tự kết nối được PostgreSQL, cần cài thêm driver:
 
 1. Tải file `.jar` tại: **jdbc.postgresql.org/download**
 2. Chạy lệnh sau để tạo thư mục và copy driver vào:
+
 ```bash
 mkdir -p ~/Library/Tableau/Drivers
 cp ~/Downloads/postgresql-*.jar ~/Library/Tableau/Drivers/
 ```
+
 3. **Thoát hẳn Tableau (Cmd+Q) rồi mở lại** — bắt buộc, chỉ restart không đủ
 
 ---
@@ -99,6 +101,7 @@ cd ~/Desktop/BI
 ```
 
 Script tự làm tất cả:
+
 1. Khởi động PostgreSQL trong Docker
 2. Tạo schema + bảng
 3. Cài thư viện Python nếu thiếu
@@ -106,6 +109,7 @@ Script tự làm tất cả:
 5. Mở giao diện web tại `http://localhost:8501`
 
 Chờ đến khi thấy dòng này là xong:
+
 ```
 ✅ Hệ thống sẵn sàng!
 ```
@@ -118,18 +122,17 @@ Chờ đến khi thấy dòng này là xong:
 2. Màn hình Connect → chọn **PostgreSQL**
 3. Điền thông số kết nối:
 
-| Ô nhập | Giá trị |
-|---|---|
-| Server | `localhost` |
-| Port | `5434` |
-| Database | `bi_db` |
-| Username | `bi_user` |
-| Password | `bi_pass` |
+| Ô nhập   | Giá trị     |
+| -------- | ----------- |
+| Server   | `localhost` |
+| Port     | `5434`      |
+| Database | `bi_db`     |
+| Username | `bi_user`   |
+| Password | `bi_pass`   |
 
 4. Bấm **Sign In**
-5. Bên trái chọn Schema → **dw**
-6. Kéo bảng `fact_marketing_sales` vào vùng trắng ở giữa
-7. Bấm **Sheet 1** ở dưới để bắt đầu làm dashboard
+5. Mở file **`Dashboard.twb`** trong thư mục BI — dashboard load lên luôn, không cần cấu hình thêm gì.
+   Chọn xem các dashboard khác nhau ở dưới cùng (5 dashboard).
 
 ---
 
@@ -158,14 +161,14 @@ Kết quả phải là `14981`. Nếu khác → chạy lại `./start.sh`.
 
 ## Kết nối Tableau
 
-| Thông số | Giá trị |
-|---|---|
-| Host | `localhost` |
-| Port | `5434` |
-| Database | `bi_db` |
-| Username | `bi_user` |
-| Password | `bi_pass` |
-| Schema | `dw` |
+| Thông số | Giá trị     |
+| -------- | ----------- |
+| Host     | `localhost` |
+| Port     | `5434`      |
+| Database | `bi_db`     |
+| Username | `bi_user`   |
+| Password | `bi_pass`   |
+| Schema   | `dw`        |
 
 > macOS cần driver PostgreSQL JDBC (file `.jar` ~1 MB) đặt tại `~/Library/Tableau/Drivers`. Tải tại jdbc.postgresql.org, thoát hẳn Tableau (Cmd+Q) rồi mở lại.
 
@@ -208,16 +211,19 @@ BI/
 ## Xử lý sự cố
 
 **`port is already allocated`**
+
 ```bash
 # Đổi port trong docker-compose.yml (vế trái 5434:5432) và DB_PORT trong .env
 ```
 
 **Tableau báo thiếu driver**
+
 - Tải PostgreSQL JDBC `.jar` từ jdbc.postgresql.org
 - Đặt vào `~/Library/Tableau/Drivers`
 - Thoát hẳn Tableau (Cmd+Q), mở lại
 
 **Không thấy dữ liệu mới trên dashboard**
+
 ```bash
 # Kiểm tra ETL đã chạy chưa
 docker exec bi_postgres psql -U bi_user -d bi_db \
