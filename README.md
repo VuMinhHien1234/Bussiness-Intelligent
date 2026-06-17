@@ -73,31 +73,86 @@ View `dw.v_sales_weather` join sẵn fact_marketing_sales + dim_branch + dim_pro
 
 ---
 
-## Khởi động
+## Khởi động — Hướng dẫn từng bước
 
-### Cách 1 — ETL tự động (khuyến nghị)
+### Bước 1 — Cài driver PostgreSQL cho Tableau (chỉ làm 1 lần duy nhất)
+
+Tableau không tự kết nối được PostgreSQL, cần cài thêm driver:
+
+1. Tải file `.jar` tại: **jdbc.postgresql.org/download**
+2. Chạy lệnh sau để tạo thư mục và copy driver vào:
+```bash
+mkdir -p ~/Library/Tableau/Drivers
+cp ~/Downloads/postgresql-*.jar ~/Library/Tableau/Drivers/
+```
+3. **Thoát hẳn Tableau (Cmd+Q) rồi mở lại** — bắt buộc, chỉ restart không đủ
+
+---
+
+### Bước 2 — Chạy hệ thống
+
+Mở Terminal, chạy đúng 1 lệnh:
 
 ```bash
 cd ~/Desktop/BI
-./run_etl.sh
+./start.sh
 ```
 
-Script tự làm 4 việc:
+Script tự làm tất cả:
 1. Khởi động PostgreSQL trong Docker
-2. Tạo schema + bảng từ `etl/sql-marketing.sql`
-3. Cài thư viện Python
-4. Chạy ETL nạp cả 3 nguồn vào DW
+2. Tạo schema + bảng
+3. Cài thư viện Python nếu thiếu
+4. Chạy ETL nạp cả 3 nguồn dữ liệu vào DW
+5. Mở giao diện web tại `http://localhost:8501`
 
-Khi thấy `ETL hoàn thành!` là dữ liệu đã sẵn sàng cho Tableau.
+Chờ đến khi thấy dòng này là xong:
+```
+✅ Hệ thống sẵn sàng!
+```
 
-### Cách 2 — Streamlit UI (upload + validate + ETL)
+---
+
+### Bước 3 — Kết nối Tableau với database
+
+1. Mở **Tableau Desktop**
+2. Màn hình Connect → chọn **PostgreSQL**
+3. Điền thông số kết nối:
+
+| Ô nhập | Giá trị |
+|---|---|
+| Server | `localhost` |
+| Port | `5434` |
+| Database | `bi_db` |
+| Username | `bi_user` |
+| Password | `bi_pass` |
+
+4. Bấm **Sign In**
+5. Bên trái chọn Schema → **dw**
+6. Kéo bảng `fact_marketing_sales` vào vùng trắng ở giữa
+7. Bấm **Sheet 1** ở dưới để bắt đầu làm dashboard
+
+---
+
+### Lần sau chạy lại
 
 ```bash
-pip install streamlit pandas openpyxl --break-system-packages
-streamlit run app.py
+./start.sh
 ```
 
-Mở trình duyệt tại `http://localhost:8501`, upload file Excel, xem kết quả validate, bấm nút chạy ETL.
+Vào Tableau bấm **F5** — dữ liệu tự cập nhật, không cần kết nối lại.
+
+> **Chỉ mở UI, không chạy ETL:** `./start.sh --no-etl`
+
+---
+
+### Kiểm tra nhanh nếu dữ liệu không hiện
+
+```bash
+docker exec bi_postgres psql -U bi_user -d bi_db \
+  -c "SELECT COUNT(*) FROM dw.fact_marketing_sales;"
+```
+
+Kết quả phải là `14981`. Nếu khác → chạy lại `./start.sh`.
 
 ---
 
@@ -144,9 +199,9 @@ BI/
 
 ## Cập nhật dữ liệu
 
-- **Thêm/sửa đơn hàng**: sửa `data/vnretail_data.xlsx` (giữ đúng 37 cột, ngày dạng `YYYY-MM-DD`) → chạy `./run_etl.sh` → Refresh trong Tableau (F5).
+- **Thêm/sửa đơn hàng**: sửa `data/vnretail_data.xlsx` (giữ đúng 37 cột, ngày dạng `YYYY-MM-DD`) → chạy `./start.sh` → Refresh trong Tableau (F5).
 - **Thêm chi quảng cáo**: thêm dòng vào `data/fb_ads_spend.csv` (ngày `dd/mm/yyyy`, campaign slug như `tet_promotion`).
-- **Thời tiết**: tự cập nhật qua API mỗi lần chạy `./run_etl.sh`.
+- **Thời tiết**: tự cập nhật qua API mỗi lần chạy `./start.sh`.
 
 ---
 
